@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/justinas/nosurf"
 	"net/http"
 )
 
@@ -47,4 +48,32 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// Prevent unauthenticated user to visit protected routes
+func (app *application) requireAuthentication(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !app.isAuthenticated(r) {
+			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+			return
+		}
+		//  pages
+		// require authentication are not stored in the users browser cache (or
+		// other intermediary cache).
+		w.Header().Add("Cache-Control", "no-store")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// NoSurf() middleware functionshich uses a customized CSRF cookie with
+// the Secure, Path, and HttpOnly attributes set.
+func noSurf(next http.Handler) http.Handler {
+	csrfHandler := nosurf.New(next)
+	csrfHandler.SetBaseCookie(http.Cookie{
+		HttpOnly: true,
+		Path:     "/",
+		Secure:   true,
+	})
+
+	return csrfHandler
 }

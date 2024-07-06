@@ -1,17 +1,19 @@
 package validator
 
 import (
+	"regexp"
 	"strings"
 	"unicode/utf8"
 )
 
 type Validator struct {
-	FieldErrors map[string]string
+	NonFieldErrors []string
+	FieldErrors    map[string]string
 }
 
 // Valid returns true if FieldErrors doesn't contain any entries
 func (v *Validator) Valid() bool {
-	return len(v.FieldErrors) == 0
+	return len(v.FieldErrors) == 0 && len(v.NonFieldErrors) == 0
 }
 
 // AddFieldError adds an error message to the key in FieldErrors map.
@@ -25,6 +27,11 @@ func (v *Validator) AddFieldError(key, msg string) {
 	if _, exists := v.FieldErrors[key]; !exists {
 		v.FieldErrors[key] = msg
 	}
+}
+
+// AddNonFieldError() helper for adding error messages to the NonFieldErrors[]
+func (v *Validator) AddNonFieldError(message string) {
+	v.NonFieldErrors = append(v.NonFieldErrors, message)
 }
 
 // CheckField adds an error message to the FieldErrors map only
@@ -45,6 +52,8 @@ func MaxChars(value string, n int) bool {
 	return utf8.RuneCountInString(value) <= n
 }
 
+func MinChars(value string, n int) bool { return utf8.RuneCountInString(value) >= n }
+
 // PermittedInt returns true if a value is in a list of permitted integers.
 func PermittedInt(value int, permittedValues ...int) bool {
 	for i := range permittedValues {
@@ -53,4 +62,11 @@ func PermittedInt(value int, permittedValues ...int) bool {
 		}
 	}
 	return false
+}
+
+// Returns a pointer to regexp.Regexp type, or panics.
+var EmailRx = regexp.MustCompile("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$")
+
+func Matches(value string, rx *regexp.Regexp) bool {
+	return rx.MatchString(value)
 }

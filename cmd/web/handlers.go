@@ -18,8 +18,22 @@ type snippetCreateForm struct {
 	validator.Validator `form:"-"` // Embedded type
 }
 
-// `home()` handler function which writes a byte slice containing
-// "Hello from Snippetbox" as the response body.
+// Create a new userSignupForm struct
+type userSignUpForm struct {
+	Name                string `form:"name"`
+	Email               string `form:"email"`
+	Password            string `form:"password"`
+	validator.Validator `form:"-"`
+}
+
+// Create new userLoginForm
+type userLoginForm struct {
+	Email               string `form:"email"`
+	Password            string `form:"password"`
+	validator.Validator `form:"-"`
+}
+
+// home() render `home.tmpl` with template data.
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	snippets, err := app.snippets.Latest()
 	if err != nil {
@@ -113,4 +127,120 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 	app.sessionManager.Put(r.Context(), "flash", "Snippet successfully created!")
 
 	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)
+}
+
+func (app *application) userSignup(w http.ResponseWriter, r *http.Request) {
+	data := app.newTemplateData(r)
+	data.Form = &userSignUpForm{}
+	app.render(w, http.StatusOK, "signup.tmpl", data)
+}
+
+func (app *application) userSignupPost(w http.ResponseWriter, r *http.Request) {
+	var form *userSignUpForm
+
+	// parse data from req body into userSignUpForm struct
+	err := app.decodePostForm(r, &form)
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+	}
+
+	// Validate user input.
+	form.CheckField(validator.NotBlank(form.Name), "name", "This field cant be blank")
+	form.CheckField(validator.NotBlank(form.Email), "email", "This field cant be blank")
+	form.CheckField(validator.Matches(form.Email, validator.EmailRx), "email", "This field must be a valid email")
+	form.CheckField(validator.NotBlank(form.Password), "password", "This field cant be blank")
+	form.CheckField(validator.MinChars(form.Password, 8), "password", "This field must be at least 8 characters long")
+
+	if !form.Valid() {
+		data := app.newTemplateData(r)
+		data.Form = form
+		app.render(w, http.StatusUnprocessableEntity, "signup.tmpl", data)
+		return
+	}
+
+	// Insert new user data to db.
+	err = app.users.Insert(form.Name, form.Email, form.Password)
+	if err != nil {
+		// Check duplicate email
+		if errors.Is(err, models.ErrDuplicateEmail) {
+			form.AddFieldError("email", "Email address is already is use")
+			data := app.newTemplateData(r)
+			data.Form = form
+			app.render(w, http.StatusUnprocessableEntity, "signup.tmpl", data)
+			return
+		} else {
+			app.serverError(w, err)
+		}
+		return
+	}
+
+	app.sessionManager.Put(r.Context(), "flash", "Your signup was successful. Please log in.")
+	http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+}
+
+func (app *application) userLogin(w http.ResponseWriter, r *http.Request) {
+	data := app.newTemplateData(r)
+	data.Form = &userLoginForm{}
+	app.render(w, http.StatusOK, "login.tmpl", data)
+}
+
+func (app *application) userLoginPost(w http.ResponseWriter, r *http.Request) {
+	// Parse submitted login form data
+	var form *userLoginForm
+	err := app.decodePostForm(r, &form)
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+	}
+
+	// Validate user data
+	form.CheckField(validator.NotBlank(form.Email), "email", "This field cannot be blank.")
+	form.CheckField(validator.Matches(form.Email, validator.EmailRx), "email", "This field must be a valid email address.")
+	form.CheckField(validator.NotBlank(form.Password), "password", "This field cannot be blank.")
+	if !form.Valid() {
+		data := app.newTemplateData(r)
+		data.Form = form
+		app.render(w, http.StatusUnprocessableEntity, "login.tmpl", data)
+		return
+	}
+	// Call Authenticate() method
+	userId, err := app.users.Authenticate(form.Email, form.Password)
+	fmt.Println("==== login data", userId, err)
+	if err != nil {
+		if errors.Is(err, models.ErrInvalidCredentials) {
+			form.AddNonFieldError("Email or password is incorrect")
+
+			data := app.newTemplateData(r)
+			data.Form = form
+			app.render(w, http.StatusUnprocessableEntity, "login.tmpl", data)
+		} else {
+			app.serverError(w, err)
+		}
+		return
+	}
+
+	// If valid add id to their session data.
+	// RenewToken() method update session data
+	err = app.sessionManager.RenewToken(r.Context())
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	// Add the ID to the current session
+	app.sessionManager.Put(r.Context(), "authenticatedUserID", userId)
+
+	http.Redirect(w, r, "/snippet/create", http.StatusSeeOther)
+}
+
+func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
+	// Renew token and remove authenticatedUserId value from session
+	err := app.sessionManager.RenewToken(r.Context())
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	app.sessionManager.Remove(r.Context(), "authenticatedUserID")
+	// Add Flash message to the session data
+	app.sessionManager.Put(r.Context(), "flash", "You've been logged out successfully!")
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
