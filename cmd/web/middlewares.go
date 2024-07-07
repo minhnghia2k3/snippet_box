@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/justinas/nosurf"
 	"net/http"
@@ -57,7 +58,6 @@ func (app *application) requireAuthentication(next http.Handler) http.Handler {
 			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 			return
 		}
-		//  pages
 		// require authentication are not stored in the users browser cache (or
 		// other intermediary cache).
 		w.Header().Add("Cache-Control", "no-store")
@@ -65,7 +65,7 @@ func (app *application) requireAuthentication(next http.Handler) http.Handler {
 	})
 }
 
-// NoSurf() middleware functionshich uses a customized CSRF cookie with
+// NoSurf() middleware uses a customized CSRF cookie with
 // the Secure, Path, and HttpOnly attributes set.
 func noSurf(next http.Handler) http.Handler {
 	csrfHandler := nosurf.New(next)
@@ -76,4 +76,30 @@ func noSurf(next http.Handler) http.Handler {
 	})
 
 	return csrfHandler
+}
+
+// authenticate() method check if user's authentication status.
+// If not authenticated, call next handler with original context.
+// If is authenticated, check id in database and create confirm context for the next handler.
+func (app *application) authenticate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := app.sessionManager.GetInt(r.Context(), "authenticatedUserID")
+		if id == 0 {
+			next.ServeHTTP(w, r)
+			return
+		}
+		exists, err := app.users.Exists(id)
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
+		// If user exists, create new request context key
+		if exists {
+			ctx := context.WithValue(r.Context(), isAuthenticatedContextKey, true)
+			r = r.WithContext(ctx)
+		}
+
+		// Call the next handler in the chain
+		next.ServeHTTP(w, r)
+	})
 }

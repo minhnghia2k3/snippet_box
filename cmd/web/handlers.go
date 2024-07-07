@@ -204,7 +204,6 @@ func (app *application) userLoginPost(w http.ResponseWriter, r *http.Request) {
 	}
 	// Call Authenticate() method
 	userId, err := app.users.Authenticate(form.Email, form.Password)
-	fmt.Println("==== login data", userId, err)
 	if err != nil {
 		if errors.Is(err, models.ErrInvalidCredentials) {
 			form.AddNonFieldError("Email or password is incorrect")
