@@ -34,8 +34,8 @@ var (
 type application struct {
 	errorLog       *log.Logger
 	infoLog        *log.Logger
-	snippets       *models.SnippetModel
-	users          *models.UserModel
+	snippets       models.SnippetModelInterface
+	users          models.UserModelInterface
 	templateCache  map[string]*template.Template
 	formDecoder    *form.Decoder
 	sessionManager *scs.SessionManager
@@ -71,7 +71,7 @@ func main() {
 	flag.Parse()
 
 	infoLog := log.New(os.Stdout, Blue+"[INFO]\t"+Gray, log.Ldate|log.Ltime)
-	errorLog := log.New(os.Stdout, Red+"[ERROR]\t"+Gray, log.Lshortfile|log.Ldate|log.Ltime)
+	errorLog := log.New(os.Stderr, Red+"[ERROR]\t"+Gray, log.Lshortfile|log.Ldate|log.Ltime)
 
 	db, err := openDB(cfg.dsn)
 	if err != nil {

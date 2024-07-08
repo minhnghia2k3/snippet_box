@@ -1,4 +1,4 @@
-.PHONY: run
+.PHONY: run test docker.image docker.run docker.exec
 
 docker.image:
 	docker pull mysql
@@ -11,3 +11,8 @@ docker.exec:
 
 run:
 	go run ./cmd/web
+
+
+VERBOSE ?=
+test:
+	go test ./cmd/web $(VERBOSE)
