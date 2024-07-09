@@ -95,7 +95,12 @@ mysql> DROP TABLE snippets;
 ERROR 1142 (42000): DROP command denied to user 'web'@'localhost' for table 'snippets'
 ```
 
-# Done! You've successfully set up
-#### Run the application on the default port [:4000](https://localhost:4000)
+## Run the application on the default port [:4000](https://localhost:4000)
     $ make run
 ![img.png](ui/static/img/img.png)
+
+## Testing ( handlers, middleware, templates )
+    $ make test
+
+## Routes Diagram
+![img.png](ui/static/img/routes.png)
