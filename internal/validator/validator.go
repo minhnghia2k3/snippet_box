@@ -70,3 +70,10 @@ var EmailRx = regexp.MustCompile("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$")
 func Matches(value string, rx *regexp.Regexp) bool {
 	return rx.MatchString(value)
 }
+
+func IsEqual[T comparable](value1, value2 T) bool {
+	if value1 == value2 {
+		return true
+	}
+	return false
+}

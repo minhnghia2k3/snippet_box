@@ -54,6 +54,11 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 // Prevent unauthenticated user to visit protected routes
 func (app *application) requireAuthentication(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		err := app.sessionManager.RenewToken(r.Context())
+		if err != nil {
+			app.serverError(w, err)
+		}
+		app.sessionManager.Put(r.Context(), "redirect_path", r.RequestURI)
 		if !app.isAuthenticated(r) {
 			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 			return

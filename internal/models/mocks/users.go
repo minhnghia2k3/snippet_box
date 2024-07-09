@@ -1,6 +1,9 @@
 package mocks
 
-import "github.com/minhnghia2k3/snippet_box/internal/models"
+import (
+	"github.com/minhnghia2k3/snippet_box/internal/models"
+	"time"
+)
 
 type UserModel struct{}
 
@@ -27,4 +30,25 @@ func (m *UserModel) Exists(id int) (bool, error) {
 	default:
 		return false, nil
 	}
+}
+
+func (m *UserModel) Get(id int) (*models.User, error) {
+	user := models.User{
+		ID:           id,
+		Name:         "test",
+		Email:        "test@gmail.com",
+		HashPassword: []byte("pa$$word"),
+		Created:      time.Now(),
+	}
+	return &user, nil
+}
+
+func (m *UserModel) PasswordUpdate(id int, currentPassword, newPassword string) error {
+	if id == 1 {
+		if currentPassword != "pa$$word" {
+			return models.ErrInvalidCredentials
+		}
+		return nil
+	}
+	return models.ErrNoRecord
 }

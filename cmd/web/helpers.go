@@ -18,6 +18,11 @@ func (app *application) serverError(w http.ResponseWriter, err error) {
 	// report file name and line number where actually error from.
 	app.errorLog.Output(2, trace)
 
+	if app.debug == true {
+		http.Error(w, trace, http.StatusInternalServerError)
+		return
+	}
+
 	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }
 

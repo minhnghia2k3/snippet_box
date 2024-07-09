@@ -32,6 +32,7 @@ var (
 
 // struct application will inject to the handlers.
 type application struct {
+	debug          bool
 	errorLog       *log.Logger
 	infoLog        *log.Logger
 	snippets       models.SnippetModelInterface
@@ -65,6 +66,7 @@ This function will:
 func main() {
 	var cfg config
 	flag.StringVar(&cfg.addr, "addr", ":4000", "HTTP network address")
+	debug := flag.Bool("debug", false, "Application debug mode")
 	flag.StringVar(&cfg.staticDir, "static-dir", "./ui/static", "Path to static address")
 	flag.StringVar(&cfg.dsn, "dsn", "web:secret@tcp(localhost:3306)/snippetbox?parseTime=true", "MySQL data source name")
 	// Must call before use the addr variable
@@ -93,6 +95,7 @@ func main() {
 	sessionManager.Cookie.Secure = true
 
 	app := &application{
+		debug:          *debug,
 		errorLog:       errorLog,
 		infoLog:        infoLog,
 		snippets:       &models.SnippetModel{DB: db},
